@@ -22,6 +22,21 @@
 CREATE SCHEMA IF NOT EXISTS esquema_grupo4;
 
 -- ---------------------------------------------------------
+-- dominios
+-- ---------------------------------------------------------
+-- dominio para "tipo_dni", solo permitimos los tipos de documento DNI, LE, LC, CI, PASAPORTE
+CREATE DOMAIN esquema_grupo4.tipo_dni_dominio AS VARCHAR(10)
+    CHECK (VALUE IN ('DNI', 'LE', 'LC', 'CI', 'PASAPORTE'));
+
+-- dominio de monto: hasta 10 digitos, 2 decimales, no negativo
+CREATE DOMAIN esquema_grupo4.monto_dominio AS NUMERIC(10,2)
+    CHECK (VALUE >= 1 AND VALUE <= 99999999.99);
+
+-- dominio de fecha, no admite fechas anteriores a la creacion del club
+CREATE DOMAIN esquema_grupo4.fecha_dom AS DATE
+    CHECK (VALUE >= DATE '2010-01-01');
+
+-- ---------------------------------------------------------
 -- persona
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4.persona (
@@ -35,16 +50,13 @@ CREATE TABLE esquema_grupo4.persona (
     CONSTRAINT pk_persona PRIMARY KEY (tipo_dni, nro_dni),
     CONSTRAINT uq_persona_nrodni UNIQUE (tipo_dni, nro_dni)  -- ver nota sobre esta decision
 );
--- ---------------------------------------------------------
--- dominio para "tipo_dni", solo permitimos los tipos de documento DNI, LE, LC, CI, PASAPORTE
--- ---------------------------------------------------------
-CREATE DOMAIN esquema_grupo4.tipo_dni_dominio AS VARCHAR(10)
-    CHECK (VALUE IN ('DNI', 'LE', 'LC', 'CI', 'PASAPORTE'));
+
 -- ---------------------------------------------------------
 -- disciplina
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4.disciplina (
-    nombre  VARCHAR(50) NOT NULL
+    nombre  VARCHAR(50) NOT NULL,
+    enfoque VARCHAR(50),
     CONSTRAINT pk_disciplina PRIMARY KEY (nombre)
 );
 
@@ -56,15 +68,13 @@ CREATE TABLE esquema_grupo4.categoria (
     nombreDisciplina VARCHAR(50) NOT NULL,
     edadMin          INT,
     edadMax          INT,
-    enfoque VARCHAR(50),
     CONSTRAINT pk_categoria PRIMARY KEY (nombreCategoria, nombreDisciplina),
     CONSTRAINT fk_categoria_disciplina FOREIGN KEY (nombreDisciplina)
         REFERENCES esquema_grupo4.disciplina (nombre)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT chk_categoria_edades
         CHECK (edadMin <= edadMax)
 );
-
 
 -- ---------------------------------------------------------
 -- profesor
@@ -80,37 +90,17 @@ CREATE TABLE esquema_grupo4.profesor (
 );
 
 -- ---------------------------------------------------------
--- tiene_tutor
+-- tutor
 -- ---------------------------------------------------------
-CREATE TABLE esquema_grupo4.tieneTutor (
-    tipo_dni_socio   VARCHAR(10) NOT NULL,
-    nro_dni_socio    VARCHAR(15) NOT NULL,
-
-    tipo_dni_tutor   VARCHAR(10) NOT NULL,
-    nro_dni_tutor    VARCHAR(15) NOT NULL,
-
-    parentesco       VARCHAR(30),
-
-    CONSTRAINT pk_tieneTutor
-        PRIMARY KEY (
-            tipo_dni_socio,
-            nro_dni_socio,
-            tipo_dni_tutor,
-            nro_dni_tutor
-        ),
-
-    CONSTRAINT fk_tieneTutor_socio
-        FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
-        REFERENCES esquema_grupo4.socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_tieneTutor_tutor
-        FOREIGN KEY (tipo_dni_tutor, nro_dni_tutor)
+CREATE TABLE esquema_grupo4.tutor (
+    tipo_dni  VARCHAR(10)  NOT NULL,
+    nro_dni   VARCHAR(15)  NOT NULL,
+    CONSTRAINT pk_tutor PRIMARY KEY (tipo_dni, nro_dni),
+    CONSTRAINT fk_tutor_persona FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES esquema_grupo4.persona (tipo_dni, nro_dni)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT
 );
+
 -- ---------------------------------------------------------
 -- socio
 -- ---------------------------------------------------------
@@ -119,7 +109,7 @@ CREATE TABLE esquema_grupo4.socio (
     nro_dni   VARCHAR(15)  NOT NULL,
     esFederado            BOOLEAN DEFAULT FALSE,
     ddjSalud              BOOLEAN DEFAULT FALSE,
-    fechaInscripcion      DATE,
+    fechaInscripcion      esquema_grupo4.fecha_dom,
     ausenciasConsecutivas INT DEFAULT 0,
     nombreDisciplina      VARCHAR(50),
     nombreCategoria       VARCHAR(50),
@@ -150,17 +140,33 @@ CREATE TABLE esquema_grupo4.usuario (
 -- tieneTutor
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4.tieneTutor (
-    tipo_dni  VARCHAR(10)  NOT NULL,
-    nro_dni   VARCHAR(15)  NOT NULL,
-    tipo_dni_tutor  VARCHAR(10)  NOT NULL,
-    nro_dni_tutor   VARCHAR(15)  NOT NULL,
-    CONSTRAINT pk_tieneTutor PRIMARY KEY (tipo_dni, nro_dni, tipo_dni_tutor, nro_dni_tutor),
-    CONSTRAINT fk_tieneTutor_socio FOREIGN KEY (tipo_dni, nro_dni)
+    tipo_dni_socio   VARCHAR(10) NOT NULL,
+    nro_dni_socio    VARCHAR(15) NOT NULL,
+
+    tipo_dni_tutor   VARCHAR(10) NOT NULL,
+    nro_dni_tutor    VARCHAR(15) NOT NULL,
+
+    parentesco       VARCHAR(30),
+
+    CONSTRAINT pk_tieneTutor
+        PRIMARY KEY (
+            tipo_dni_socio,
+            nro_dni_socio,
+            tipo_dni_tutor,
+            nro_dni_tutor
+        ),
+
+    CONSTRAINT fk_tieneTutor_socio
+        FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
         REFERENCES esquema_grupo4.socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT fk_tieneTutor_tutor FOREIGN KEY (tipo_dni_tutor, nro_dni_tutor)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_tieneTutor_tutor
+        FOREIGN KEY (tipo_dni_tutor, nro_dni_tutor)
         REFERENCES esquema_grupo4.tutor (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
 );
 
 -- ---------------------------------------------------------
@@ -281,13 +287,11 @@ CREATE TABLE esquema_grupo4.certificadoMedico (
         ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT fk_certificado_medico FOREIGN KEY (matricula)
         REFERENCES esquema_grupo4.medico (matricula)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_certificado_fechas
+        CHECK (fechaVencimiento IS NULL OR fechaEmision < fechaVencimiento)
 );
--- ---------------------------------------------------------
--- la fecha de emision debe ser antes que la fecha de vencimiento por 
--- ---------------------------------------------------------
-CREATE DOMAIN esquema_grupo4.fecha_dom AS DATE
-    CHECK (VALUE >= DATE '2010-01-01');
+
 -- ---------------------------------------------------------
 -- seguro
 -- ---------------------------------------------------------
@@ -321,13 +325,7 @@ CREATE TABLE esquema_grupo4.cuota (
         REFERENCES esquema_grupo4.socio (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
--- ---------------------------------------------------------
--- dominio de monto:hasta 10 digitos, 2 decimales, no negativo 
--- ---------------------------------------------------------
-CREATE DOMAIN esquema_grupo4.monto_dominio AS NUMERIC(10,2)
-    CHECK (VALUE >= 1 AND VALUE <= 99999999.99);
 
-CREATE TABLE esquema_grupo4.pago (
 -- ---------------------------------------------------------
 -- pago
 -- ---------------------------------------------------------
@@ -426,11 +424,11 @@ CREATE TABLE esquema_grupo4.rol(
 
 CREATE TABLE esquema_grupo4.tiene_rol (
     nombre_rol     VARCHAR(50) NOT NULL,
-    nombre_usuario VARCHAR(50) NOT NULL,
+    nombreUsuario  VARCHAR(50) NOT NULL,
     fecha          DATE NOT NULL,
 
     CONSTRAINT pk_tiene_rol
-        PRIMARY KEY (nombre_rol, nombre_usuario),
+        PRIMARY KEY (nombre_rol, nombreUsuario),
 
     CONSTRAINT fk_tiene_rol_rol
         FOREIGN KEY (nombre_rol)
@@ -439,21 +437,35 @@ CREATE TABLE esquema_grupo4.tiene_rol (
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_tiene_rol_usuario
-        FOREIGN KEY (nombre_usuario)
-        REFERENCES esquema_grupo4.usuario (nombre_usuario)
+        FOREIGN KEY (nombreUsuario)
+        REFERENCES esquema_grupo4.usuario (nombreUsuario)
         ON UPDATE CASCADE
         ON DELETE RESTRICT
 );
+
 -- =========================================================
 -- ESQUEMA: esquema_grupo4_alt
+-- (estructura identica a esquema_grupo4, mismos dominios)
 -- =========================================================
 CREATE SCHEMA IF NOT EXISTS esquema_grupo4_alt;
+
+-- ---------------------------------------------------------
+-- dominios
+-- ---------------------------------------------------------
+CREATE DOMAIN esquema_grupo4_alt.tipo_dni_dominio AS VARCHAR(10)
+    CHECK (VALUE IN ('DNI', 'LE', 'LC', 'CI', 'PASAPORTE'));
+
+CREATE DOMAIN esquema_grupo4_alt.monto_dominio AS NUMERIC(10,2)
+    CHECK (VALUE >= 1 AND VALUE <= 99999999.99);
+
+CREATE DOMAIN esquema_grupo4_alt.fecha_dom AS DATE
+    CHECK (VALUE >= DATE '2010-01-01');
 
 -- ---------------------------------------------------------
 -- persona
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4_alt.persona (
-    tipo_dni        VARCHAR(10)  NOT NULL,
+    tipo_dni        esquema_grupo4_alt.tipo_dni_dominio NOT NULL,
     nro_dni         VARCHAR(15)  NOT NULL,
     nombre          VARCHAR(60)  NOT NULL,
     apellido        VARCHAR(60)  NOT NULL,
@@ -484,7 +496,9 @@ CREATE TABLE esquema_grupo4_alt.categoria (
     CONSTRAINT pk_categoria PRIMARY KEY (nombreCategoria, nombreDisciplina),
     CONSTRAINT fk_categoria_disciplina FOREIGN KEY (nombreDisciplina)
         REFERENCES esquema_grupo4_alt.disciplina (nombre)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_categoria_edades
+        CHECK (edadMin <= edadMax)
 );
 
 -- ---------------------------------------------------------
@@ -503,34 +517,13 @@ CREATE TABLE esquema_grupo4_alt.profesor (
 -- ---------------------------------------------------------
 -- tutor
 -- ---------------------------------------------------------
-CREATE TABLE esquema_grupo4_alt.tieneTutor (
-    tipo_dni_socio   VARCHAR(10) NOT NULL,
-    nro_dni_socio    VARCHAR(15) NOT NULL,
-
-    tipo_dni_tutor   VARCHAR(10) NOT NULL,
-    nro_dni_tutor    VARCHAR(15) NOT NULL,
-
-    parentesco       VARCHAR(30),
-
-    CONSTRAINT pk_tieneTutor
-        PRIMARY KEY (
-            tipo_dni_socio,
-            nro_dni_socio,
-            tipo_dni_tutor,
-            nro_dni_tutor
-        ),
-
-    CONSTRAINT fk_tieneTutor_socio
-        FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
-        REFERENCES esquema_grupo4_alt.socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_tieneTutor_tutor
-        FOREIGN KEY (tipo_dni_tutor, nro_dni_tutor)
+CREATE TABLE esquema_grupo4_alt.tutor (
+    tipo_dni  VARCHAR(10)  NOT NULL,
+    nro_dni   VARCHAR(15)  NOT NULL,
+    CONSTRAINT pk_tutor PRIMARY KEY (tipo_dni, nro_dni),
+    CONSTRAINT fk_tutor_persona FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES esquema_grupo4_alt.persona (tipo_dni, nro_dni)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 -- ---------------------------------------------------------
@@ -541,7 +534,7 @@ CREATE TABLE esquema_grupo4_alt.socio (
     nro_dni   VARCHAR(15)  NOT NULL,
     esFederado            BOOLEAN DEFAULT FALSE,
     ddjSalud              BOOLEAN DEFAULT FALSE,
-    fechaInscripcion      DATE,
+    fechaInscripcion      esquema_grupo4_alt.fecha_dom,
     ausenciasConsecutivas INT DEFAULT 0,
     nombreDisciplina      VARCHAR(50),
     nombreCategoria       VARCHAR(50),
@@ -572,17 +565,33 @@ CREATE TABLE esquema_grupo4_alt.usuario (
 -- tieneTutor
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4_alt.tieneTutor (
-    tipo_dni  VARCHAR(10)  NOT NULL,
-    nro_dni   VARCHAR(15)  NOT NULL,
-    tipo_dni_tutor  VARCHAR(10)  NOT NULL,
-    nro_dni_tutor   VARCHAR(15)  NOT NULL,
-    CONSTRAINT pk_tieneTutor PRIMARY KEY (tipo_dni, nro_dni, tipo_dni_tutor, nro_dni_tutor),
-    CONSTRAINT fk_tieneTutor_socio FOREIGN KEY (dniSocio)
-        REFERENCES esquema_grupo4_alt.socio (dniSocio)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT fk_tieneTutor_tutor FOREIGN KEY (dniTutor)
-        REFERENCES esquema_grupo4_alt.tutor (dniTutor)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+    tipo_dni_socio   VARCHAR(10) NOT NULL,
+    nro_dni_socio    VARCHAR(15) NOT NULL,
+
+    tipo_dni_tutor   VARCHAR(10) NOT NULL,
+    nro_dni_tutor    VARCHAR(15) NOT NULL,
+
+    parentesco       VARCHAR(30),
+
+    CONSTRAINT pk_tieneTutor
+        PRIMARY KEY (
+            tipo_dni_socio,
+            nro_dni_socio,
+            tipo_dni_tutor,
+            nro_dni_tutor
+        ),
+
+    CONSTRAINT fk_tieneTutor_socio
+        FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
+        REFERENCES esquema_grupo4_alt.socio (tipo_dni, nro_dni)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_tieneTutor_tutor
+        FOREIGN KEY (tipo_dni_tutor, nro_dni_tutor)
+        REFERENCES esquema_grupo4_alt.tutor (tipo_dni, nro_dni)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
 );
 
 -- ---------------------------------------------------------
@@ -645,7 +654,7 @@ CREATE TABLE esquema_grupo4_alt.clase (
     horaFin          TIME,
     tipo_dni       VARCHAR(10) NOT NULL,
     nro_dni        VARCHAR(15) NOT NULL,
-    idPlanilla       INT,
+    idPlanilla       INT NOT NULL,
     rol VARCHAR(30) ,
     CONSTRAINT pk_clase PRIMARY KEY (nombreDisciplina, nombreCategoria, fecha, horaInicio),
     CONSTRAINT fk_clase_categoria FOREIGN KEY (nombreCategoria, nombreDisciplina)
@@ -703,7 +712,9 @@ CREATE TABLE esquema_grupo4_alt.certificadoMedico (
         ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT fk_certificado_medico FOREIGN KEY (matricula)
         REFERENCES esquema_grupo4_alt.medico (matricula)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_certificado_fechas
+        CHECK (fechaVencimiento IS NULL OR fechaEmision < fechaVencimiento)
 );
 
 -- ---------------------------------------------------------
@@ -729,7 +740,7 @@ CREATE TABLE esquema_grupo4_alt.seguro (
 CREATE TABLE esquema_grupo4_alt.cuota (
     idCuota       SERIAL      NOT NULL,
     fecha         DATE        NOT NULL,
-    monto         NUMERIC(10,2) NOT NULL,
+    monto esquema_grupo4_alt.monto_dominio NOT NULL,
     estadoDePago  VARCHAR(20),
     periodo       VARCHAR(20),
     tipo_dni       VARCHAR(10) NOT NULL,
@@ -746,7 +757,7 @@ CREATE TABLE esquema_grupo4_alt.cuota (
 CREATE TABLE esquema_grupo4_alt.pago (
     idPago     SERIAL      NOT NULL,
     fechaPago  DATE        NOT NULL,
-    monto      NUMERIC(10,2) NOT NULL,
+    monto       esquema_grupo4_alt.monto_dominio NOT NULL,
     idCuota    INT         NOT NULL,
     CONSTRAINT pk_pago PRIMARY KEY (idPago),
     CONSTRAINT fk_pago_cuota FOREIGN KEY (idCuota)
@@ -838,11 +849,11 @@ CREATE TABLE esquema_grupo4_alt.rol(
 
 CREATE TABLE esquema_grupo4_alt.tiene_rol (
     nombre_rol     VARCHAR(50) NOT NULL,
-    nombre_usuario VARCHAR(50) NOT NULL,
+    nombreUsuario  VARCHAR(50) NOT NULL,
     fecha          DATE NOT NULL,
 
     CONSTRAINT pk_tiene_rol
-        PRIMARY KEY (nombre_rol, nombre_usuario),
+        PRIMARY KEY (nombre_rol, nombreUsuario),
 
     CONSTRAINT fk_tiene_rol_rol
         FOREIGN KEY (nombre_rol)
@@ -851,8 +862,8 @@ CREATE TABLE esquema_grupo4_alt.tiene_rol (
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_tiene_rol_usuario
-        FOREIGN KEY (nombre_usuario)
-        REFERENCES esquema_grupo4_alt.usuario (nombre_usuario)
+        FOREIGN KEY (nombreUsuario)
+        REFERENCES esquema_grupo4_alt.usuario (nombreUsuario)
         ON UPDATE CASCADE
         ON DELETE RESTRICT
 );

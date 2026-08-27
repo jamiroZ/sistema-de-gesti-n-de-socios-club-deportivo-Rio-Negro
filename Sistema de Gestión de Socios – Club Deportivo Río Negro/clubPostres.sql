@@ -12,7 +12,7 @@
 --   luego correr este archivo.
 -- =========================================================
 
--- CREATE DATABASE club_db;   -- descomentar si aun no existe
+-- CREATE DATABASE club_db;  
 -- \c club_db
 
 

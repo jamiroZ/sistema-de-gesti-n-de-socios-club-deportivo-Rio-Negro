@@ -9,6 +9,11 @@
 -- se agrego una restriccion UNIQUE sobre nro_dni y esas tablas
 -- referencian unicamente ese atributo (misma decision que en
 -- la version PostgreSQL, para mantener ambos modelos equivalentes).
+--
+-- MySQL no soporta CREATE DOMAIN: las validaciones que en la
+-- version PostgreSQL se resuelven con dominios (tipo_dni_dominio,
+-- monto_dominio, fecha_dom) se implementan aca como CHECK
+-- directamente sobre la columna correspondiente.
 -- =========================================================
 
 CREATE DATABASE IF NOT EXISTS club_db
@@ -29,7 +34,9 @@ CREATE TABLE persona (
     fechaNacimiento DATE,
     mail            VARCHAR(100),
     PRIMARY KEY (tipo_dni, nro_dni),
-    UNIQUE KEY uq_persona_nrodni (nro_dni)
+    UNIQUE KEY uq_persona_nrodni (nro_dni),
+    CONSTRAINT chk_persona_tipo_dni
+        CHECK (tipo_dni IN ('DNI', 'LE', 'LC', 'CI', 'PASAPORTE'))
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
@@ -37,6 +44,7 @@ CREATE TABLE persona (
 -- ---------------------------------------------------------
 CREATE TABLE disciplina (
     nombre  VARCHAR(50) NOT NULL,
+    enfoque VARCHAR(50),
     PRIMARY KEY (nombre)
 ) ENGINE=InnoDB;
 
@@ -48,11 +56,12 @@ CREATE TABLE categoria (
     nombreDisciplina VARCHAR(50) NOT NULL,
     edadMin          INT,
     edadMax          INT,
-    enfoque VARCHAR(50),
     PRIMARY KEY (nombreCategoria, nombreDisciplina),
     CONSTRAINT fk_categoria_disciplina FOREIGN KEY (nombreDisciplina)
         REFERENCES disciplina (nombre)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_categoria_edades
+        CHECK (edadMin <= edadMax)
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
@@ -64,41 +73,20 @@ CREATE TABLE profesor (
     fechaIngreso DATE,
     CONSTRAINT pk_profesor PRIMARY KEY (tipo_dni, nro_dni),
     CONSTRAINT fk_profesor_persona FOREIGN KEY (tipo_dni, nro_dni)
-        REFERENCES esquema_grupo4.persona (tipo_dni, nro_dni)
+        REFERENCES persona (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
 -- tutor
 -- ---------------------------------------------------------
-CREATE TABLE tieneTutor (
-    tipo_dni_socio   VARCHAR(10) NOT NULL,
-    nro_dni_socio    VARCHAR(15) NOT NULL,
-
-    tipo_dni_tutor   VARCHAR(10) NOT NULL,
-    nro_dni_tutor    VARCHAR(15) NOT NULL,
-
-    parentesco       VARCHAR(30),
-
-    CONSTRAINT pk_tieneTutor
-        PRIMARY KEY (
-            tipo_dni_socio,
-            nro_dni_socio,
-            tipo_dni_tutor,
-            nro_dni_tutor
-        ),
-
-    CONSTRAINT fk_tieneTutor_socio
-        FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
-        REFERENCES esquema_grupo4.socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_tieneTutor_tutor
-        FOREIGN KEY (tipo_dni_tutor, nro_dni_tutor)
-        REFERENCES esquema_grupo4.persona (tipo_dni, nro_dni)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT
+CREATE TABLE tutor (
+    tipo_dni  VARCHAR(10)  NOT NULL,
+    nro_dni   VARCHAR(15)  NOT NULL,
+    CONSTRAINT pk_tutor PRIMARY KEY (tipo_dni, nro_dni),
+    CONSTRAINT fk_tutor_persona FOREIGN KEY (tipo_dni, nro_dni)
+        REFERENCES persona (tipo_dni, nro_dni)
+        ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
@@ -119,7 +107,9 @@ CREATE TABLE socio (
         ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_socio_categoria FOREIGN KEY (nombreCategoria, nombreDisciplina)
         REFERENCES categoria (nombreCategoria, nombreDisciplina)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_socio_fechaInscripcion
+        CHECK (fechaInscripcion IS NULL OR fechaInscripcion >= '2010-01-01')
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
@@ -140,17 +130,33 @@ CREATE TABLE usuario (
 -- tieneTutor
 -- ---------------------------------------------------------
 CREATE TABLE tieneTutor (
-    tipo_dni  VARCHAR(10)  NOT NULL,
-    nro_dni   VARCHAR(15)  NOT NULL,
-    tipo_dni_tutor  VARCHAR(10)  NOT NULL,
-    nro_dni_tutor   VARCHAR(15)  NOT NULL,
-    CONSTRAINT pk_tieneTutor PRIMARY KEY (tipo_dni, nro_dni, tipo_dni_tutor, nro_dni_tutor),
-    CONSTRAINT fk_tieneTutor_socio FOREIGN KEY (tipo_dni, nro_dni)
+    tipo_dni_socio   VARCHAR(10) NOT NULL,
+    nro_dni_socio    VARCHAR(15) NOT NULL,
+
+    tipo_dni_tutor   VARCHAR(10) NOT NULL,
+    nro_dni_tutor    VARCHAR(15) NOT NULL,
+
+    parentesco       VARCHAR(30),
+
+    CONSTRAINT pk_tieneTutor
+        PRIMARY KEY (
+            tipo_dni_socio,
+            nro_dni_socio,
+            tipo_dni_tutor,
+            nro_dni_tutor
+        ),
+
+    CONSTRAINT fk_tieneTutor_socio
+        FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
         REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT fk_tieneTutor_tutor FOREIGN KEY (tipo_dni_tutor, nro_dni_tutor)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_tieneTutor_tutor
+        FOREIGN KEY (tipo_dni_tutor, nro_dni_tutor)
         REFERENCES tutor (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
@@ -266,11 +272,13 @@ CREATE TABLE certificadoMedico (
     matricula        VARCHAR(20) NOT NULL,
     PRIMARY KEY (tipo_dni, nro_dni, fechaEmision),
     CONSTRAINT fk_certificado_socio FOREIGN KEY (tipo_dni, nro_dni)
-        REFERENCES socio (dniSocio)
+        REFERENCES socio (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT fk_certificado_medico FOREIGN KEY (matricula)
         REFERENCES medico (matricula)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_certificado_fechas
+        CHECK (fechaVencimiento IS NULL OR fechaEmision < fechaVencimiento)
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
@@ -304,7 +312,9 @@ CREATE TABLE cuota (
     PRIMARY KEY (idCuota),
     CONSTRAINT fk_cuota_socio FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_cuota_monto
+        CHECK (monto >= 1 AND monto <= 99999999.99)
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
@@ -313,12 +323,14 @@ CREATE TABLE cuota (
 CREATE TABLE pago (
     idPago    INT AUTO_INCREMENT,
     fechaPago DATE NOT NULL,
-    monto     DECIMAL(10,2) NOT NULL,--valor aceptado hasta xxxxxxxx.xx
+    monto     DECIMAL(10,2) NOT NULL,
     idCuota   INT NOT NULL,
     PRIMARY KEY (idPago),
     CONSTRAINT fk_pago_cuota FOREIGN KEY (idCuota)
         REFERENCES cuota (idCuota)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_pago_monto
+        CHECK (monto >= 1 AND monto <= 99999999.99)
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
@@ -405,11 +417,11 @@ CREATE TABLE rol(
 
 CREATE TABLE tiene_rol (
     nombre_rol     VARCHAR(50) NOT NULL,
-    nombre_usuario VARCHAR(50) NOT NULL,
+    nombreUsuario  VARCHAR(50) NOT NULL,
     fecha          DATETIME,
 
     CONSTRAINT pk_tiene_rol
-        PRIMARY KEY (nombre_rol, nombre_usuario),
+        PRIMARY KEY (nombre_rol, nombreUsuario),
 
     CONSTRAINT fk_tiene_rol_rol
         FOREIGN KEY (nombre_rol)
@@ -418,8 +430,8 @@ CREATE TABLE tiene_rol (
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_tiene_rol_usuario
-        FOREIGN KEY (nombre_usuario)
-        REFERENCES usuario (nombre_usuario)
+        FOREIGN KEY (nombreUsuario)
+        REFERENCES usuario (nombreUsuario)
         ON UPDATE CASCADE
         ON DELETE RESTRICT
 )ENGINE=InnoDB;
