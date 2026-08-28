@@ -79,11 +79,11 @@ CREATE TABLE tiene_tutor (
     nro_dni_tutor  VARCHAR(15) NOT NULL,
     parentesco     VARCHAR(30) NOT NULL,
     PRIMARY KEY (tipo_dni_socio, nro_dni_socio),
-    --menor de edad
+  
     FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
         REFERENCES socio (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE CASCADE,
-    --tutor
+
     FOREIGN KEY (tipo_dni_tutor, nro_dni_tutor)
         REFERENCES persona (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE RESTRICT
@@ -98,7 +98,7 @@ CREATE TABLE estado_socio (
     PRIMARY KEY (tipo_dni, nro_dni, fecha_modificacion),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE CASCADE,
+        ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE a_cargo (
