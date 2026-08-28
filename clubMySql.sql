@@ -34,7 +34,6 @@ CREATE TABLE persona (
     fechaNacimiento DATE,
     mail            VARCHAR(100),
     PRIMARY KEY (tipo_dni, nro_dni),
-    UNIQUE KEY uq_persona_nrodni (nro_dni),
     CONSTRAINT chk_persona_tipo_dni
         CHECK (tipo_dni IN ('DNI', 'LE', 'LC', 'CI', 'PASAPORTE'))
 ) ENGINE=InnoDB;
@@ -229,7 +228,7 @@ CREATE TABLE clase (
         ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_clase_planilla FOREIGN KEY (idPlanilla)
         REFERENCES planillaAsistencia (idPlanilla)
-        ON UPDATE CASCADE ON DELETE SET NULL,
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     UNIQUE KEY uq_clase_planilla (idPlanilla)
 ) ENGINE=InnoDB;
 
@@ -360,38 +359,6 @@ CREATE TABLE tieneCargo (
         ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------------------
--- historialFinanciero
--- ---------------------------------------------------------
-CREATE TABLE historialFinanciero (
-    idHistorial     INT AUTO_INCREMENT,--incrementa solo por nuevo historial
-    fechaGeneracion DATETIME,
-    tipoPeriodo     VARCHAR(20),
-    periodo         VARCHAR(20),
-    montoAdeudado   DECIMAL(10,2),
-    tipo_dni       VARCHAR(10) NOT NULL,
-    nro_dni        VARCHAR(15) NOT NULL,
-    PRIMARY KEY (idHistorial),
-    CONSTRAINT fk_historialFin_socio FOREIGN KEY (tipo_dni, nro_dni)
-        REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
-
--- ---------------------------------------------------------
--- historialAusenciasProlongadas
--- ---------------------------------------------------------
-CREATE TABLE historialAusenciasProlongadas (
-    idHistorial     INT AUTO_INCREMENT,--incrementa solo por nuevo historial
-    fechaGeneracion DATETIME,
-    tipoPeriodo     VARCHAR(20),
-    umbralAusencias INT,
-    tipo_dni       VARCHAR(10) NOT NULL,
-    nro_dni        VARCHAR(15) NOT NULL,
-    PRIMARY KEY (idHistorial),
-    CONSTRAINT fk_historialAus_socio FOREIGN KEY (tipo_dni, nro_dni)
-        REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
 -- notificacion
