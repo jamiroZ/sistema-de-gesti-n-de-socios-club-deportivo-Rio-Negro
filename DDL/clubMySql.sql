@@ -1,15 +1,11 @@
 -- =========================================================
--- Conversión de PostgreSQL a MySQL
--- Notas:
---  * MySQL no soporta CREATE DOMAIN -> se reemplaza por tipo base
+--    MySQL
+--    MySQL no soporta CREATE DOMAIN -> se reemplaza por tipo base
 --    + CHECK repetido en cada columna que usaba el dominio.
---  * SERIAL en MySQL = BIGINT UNSIGNED AUTO_INCREMENT (distinto a
+--    SERIAL en MySQL = BIGINT UNSIGNED AUTO_INCREMENT (distinto a
 --    Postgres, donde SERIAL = INT). Se usa INT AUTO_INCREMENT para
 --    mantener compatibilidad con las FKs tipadas como INT.
---  * CHECK requiere MySQL >= 8.0.16 (o MariaDB >= 10.2) para
---    ser efectivamente validado.
---  * Se corrigió una coma colgante en socio (error de sintaxis
---    que ya venía del original, no específico de MySQL).
+--    CHECK requiere MySQL >= 8.0.16 para ser efectivamente validado.
 -- =========================================================
 
 CREATE TABLE persona (
