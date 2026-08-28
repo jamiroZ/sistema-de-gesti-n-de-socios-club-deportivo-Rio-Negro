@@ -1,19 +1,7 @@
 -- =========================================================
 -- MODELO RELACIONAL - Club (Sistema de gestion de socios)
 -- SGBD: MySQL
---
--- NOTA DE DISENO:
--- La entidad persona tiene clave primaria compuesta
--- (tipo_dni, nro_dni). Para simplificar las referencias desde
--- profesor, socio, tutor y usuario (que solo guardan un DNI),
--- se agrego una restriccion UNIQUE sobre nro_dni y esas tablas
--- referencian unicamente ese atributo (misma decision que en
--- la version PostgreSQL, para mantener ambos modelos equivalentes).
---
--- MySQL no soporta CREATE DOMAIN: las validaciones que en la
--- version PostgreSQL se resuelven con dominios (tipo_dni_dominio,
--- monto_dominio, fecha_dom) se implementan aca como CHECK
--- directamente sobre la columna correspondiente.
+
 -- =========================================================
 
 CREATE DATABASE IF NOT EXISTS club_db

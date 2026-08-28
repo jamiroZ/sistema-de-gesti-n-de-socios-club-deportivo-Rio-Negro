@@ -40,15 +40,14 @@ CREATE DOMAIN esquema_grupo4.fecha_dom AS DATE
 -- persona
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4.persona (
-    tipo_dni        esquema_grupo4.tipo_dni_dominio NOT NULL,
-    nro_dni         VARCHAR(15)  NOT NULL,
+    tipo_dni        esquema_grupo4.tipo_dni_dominio ,
+    nro_dni         VARCHAR(15) ,
     nombre          VARCHAR(60)  NOT NULL,
     apellido        VARCHAR(60)  NOT NULL,
     telefono        VARCHAR(20),
     fechaNacimiento DATE,
     mail            VARCHAR(100),
-    CONSTRAINT pk_persona PRIMARY KEY (tipo_dni, nro_dni),
-    CONSTRAINT uq_persona_nrodni UNIQUE (tipo_dni, nro_dni)  -- ver nota sobre esta decision
+    PRIMARY KEY (tipo_dni, nro_dni),
 );
 
 -- ---------------------------------------------------------
@@ -486,15 +485,15 @@ CREATE TABLE esquema_grupo4_alt.tutor (
 -- socio
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4_alt.socio (
-    tipo_dni  VARCHAR(10)  NOT NULL,
-    nro_dni   VARCHAR(15)  NOT NULL,
+    tipo_dni  VARCHAR(10),
+    nro_dni   VARCHAR(15),
     esFederado            BOOLEAN DEFAULT FALSE,
     ddjSalud              BOOLEAN DEFAULT FALSE,
     fechaInscripcion      esquema_grupo4_alt.fecha_dom,
     ausenciasConsecutivas INT DEFAULT 0,
     nombreDisciplina      VARCHAR(50),
     nombreCategoria       VARCHAR(50),
-    CONSTRAINT pk_socio PRIMARY KEY (tipo_dni, nro_dni),
+    PRIMARY KEY (tipo_dni, nro_dni),
     CONSTRAINT fk_socio_persona FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES esquema_grupo4_alt.persona (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -507,11 +506,10 @@ CREATE TABLE esquema_grupo4_alt.socio (
 -- usuario
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4_alt.usuario (
-    nombreUsuario VARCHAR(50)  NOT NULL,
+    nombreUsuario VARCHAR(50)  PRIMARY KEY,
     contrasenia   VARCHAR(255) NOT NULL,
     tipo_dni  VARCHAR(10)  NOT NULL,
     nro_dni   VARCHAR(15)  NOT NULL,
-    CONSTRAINT pk_usuario PRIMARY KEY (nombreUsuario),
     CONSTRAINT fk_usuario_persona FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES esquema_grupo4_alt.persona (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE RESTRICT
@@ -529,13 +527,13 @@ CREATE TABLE esquema_grupo4_alt.tieneTutor (
 
     parentesco       VARCHAR(30),
 
-    CONSTRAINT pk_tieneTutor
-        PRIMARY KEY (
+
+    PRIMARY KEY (
             tipo_dni_socio,
             nro_dni_socio,
             tipo_dni_tutor,
             nro_dni_tutor
-        ),
+    ),
 
     CONSTRAINT fk_tieneTutor_socio
         FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
@@ -554,12 +552,12 @@ CREATE TABLE esquema_grupo4_alt.tieneTutor (
 -- estadoSocio
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4_alt.estadoSocio (
-    tipo_dni       VARCHAR(10) NOT NULL,
-    nro_dni        VARCHAR(15) NOT NULL,
-    fechaModificacion TIMESTAMP  NOT NULL,
+    tipo_dni       VARCHAR(10) ,
+    nro_dni        VARCHAR(15),
+    fechaModificacion TIMESTAMP,
     estado           VARCHAR(20) NOT NULL,
     modificadoPor    VARCHAR(50),
-    CONSTRAINT pk_estadoSocio PRIMARY KEY (tipo_dni, nro_dni, fechaModificacion),
+    PRIMARY KEY (tipo_dni, nro_dni, fechaModificacion),
     CONSTRAINT fk_estadoSocio_socio FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES esquema_grupo4_alt.socio (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -572,12 +570,12 @@ CREATE TABLE esquema_grupo4_alt.estadoSocio (
 -- aCargo
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4_alt.aCargo (
-    nombreDisciplina VARCHAR(50) NOT NULL,
-    nombreCategoria  VARCHAR(50) NOT NULL,
-    rol              VARCHAR(30) NOT NULL,
-    tipo_dni       VARCHAR(10) NOT NULL,
-    nro_dni        VARCHAR(15) NOT NULL,
-    CONSTRAINT pk_aCargo PRIMARY KEY (nombreDisciplina, nombreCategoria, tipo_dni, nro_dni, rol),
+    nombreDisciplina VARCHAR(50),
+    nombreCategoria  VARCHAR(50),
+    rol              VARCHAR(30),
+    tipo_dni       VARCHAR(10),
+    nro_dni        VARCHAR(15),
+    PRIMARY KEY (nombreDisciplina, nombreCategoria, tipo_dni, nro_dni, rol),
     CONSTRAINT fk_aCargo_categoria FOREIGN KEY (nombreCategoria, nombreDisciplina)
         REFERENCES esquema_grupo4_alt.categoria (nombreCategoria, nombreDisciplina)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -590,10 +588,9 @@ CREATE TABLE esquema_grupo4_alt.aCargo (
 -- planillaAsistencia
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4_alt.planillaAsistencia (
-    idPlanilla  SERIAL      NOT NULL,
+    idPlanilla  SERIAL      PRIMARY KEY,
     tipo_dni       VARCHAR(10) NOT NULL,
     nro_dni        VARCHAR(15) NOT NULL,
-    CONSTRAINT pk_planillaAsistencia PRIMARY KEY (idPlanilla),
     CONSTRAINT fk_planilla_profesor FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES esquema_grupo4_alt.profesor (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE RESTRICT
@@ -603,16 +600,16 @@ CREATE TABLE esquema_grupo4_alt.planillaAsistencia (
 -- clase
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4_alt.clase (
-    nombreDisciplina VARCHAR(50) NOT NULL,
-    nombreCategoria  VARCHAR(50) NOT NULL,
-    fecha            DATE        NOT NULL,
-    horaInicio       TIME        NOT NULL,
+    nombreDisciplina VARCHAR(50) ,
+    nombreCategoria  VARCHAR(50) ,
+    fecha            DATE      ,
+    horaInicio       TIME       ,
     horaFin          TIME,
     tipo_dni       VARCHAR(10) NOT NULL,
     nro_dni        VARCHAR(15) NOT NULL,
     idPlanilla       INT NOT NULL,
     rol VARCHAR(30) ,
-    CONSTRAINT pk_clase PRIMARY KEY (nombreDisciplina, nombreCategoria, fecha, horaInicio),
+    PRIMARY KEY (nombreDisciplina, nombreCategoria, fecha, horaInicio),
     CONSTRAINT fk_clase_categoria FOREIGN KEY (nombreCategoria, nombreDisciplina)
         REFERENCES esquema_grupo4_alt.categoria (nombreCategoria, nombreDisciplina)
         ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -633,7 +630,7 @@ CREATE TABLE esquema_grupo4_alt.detalleAsistencia (
     tipo_dni       VARCHAR(10) NOT NULL,
     nro_dni        VARCHAR(15) NOT NULL,
     estadoAsistencia VARCHAR(20),
-    CONSTRAINT pk_detalleAsistencia PRIMARY KEY (idPlanilla, tipo_dni, nro_dni),
+    PRIMARY KEY (idPlanilla, tipo_dni, nro_dni),
     CONSTRAINT fk_detalle_planilla FOREIGN KEY (idPlanilla)
         REFERENCES esquema_grupo4_alt.planillaAsistencia (idPlanilla)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -646,11 +643,10 @@ CREATE TABLE esquema_grupo4_alt.detalleAsistencia (
 -- medico
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4_alt.medico (
-    matricula VARCHAR(20) NOT NULL,
+    matricula VARCHAR(20) PRIMARY KEY,
     nombre    VARCHAR(60),
     apellido  VARCHAR(60),
     telefono  VARCHAR(20),
-    CONSTRAINT pk_medico PRIMARY KEY (matricula)
 );
 
 -- ---------------------------------------------------------
@@ -662,7 +658,7 @@ CREATE TABLE esquema_grupo4_alt.certificadoMedico (
     fechaEmision     DATE        NOT NULL,
     fechaVencimiento DATE,
     matricula        VARCHAR(20) NOT NULL,
-    CONSTRAINT pk_certificadoMedico PRIMARY KEY (tipo_dni, nro_dni, fechaEmision),
+    PRIMARY KEY (tipo_dni, nro_dni, fechaEmision),
     CONSTRAINT fk_certificado_socio FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES esquema_grupo4_alt.socio (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -752,31 +748,27 @@ CREATE TABLE esquema_grupo4_alt.tieneCargo (
 -- notificacion
 -- ---------------------------------------------------------
 CREATE TABLE esquema_grupo4_alt.notificacion (
-    idNotificacion SERIAL      NOT NULL,
+    idNotificacion SERIAL  PRIMARY KEY,
     tipo           VARCHAR(30),
     mensaje        TEXT,
     fecha          TIMESTAMP,
     nombreUsuario  VARCHAR(50) NOT NULL,
-    CONSTRAINT pk_notificacion PRIMARY KEY (idNotificacion),
     CONSTRAINT fk_notificacion_usuario FOREIGN KEY (nombreUsuario)
         REFERENCES esquema_grupo4_alt.usuario (nombreUsuario)
         ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE esquema_grupo4_alt.rol(
-    nombre_rol VARCHAR(30) NOT NULL,
+    nombre_rol VARCHAR(30) PRIMARY KEY,
     permisos VARCHAR(100) NOT NULL,
-    CONSTRAINT pk_rol
-        PRIMARY KEY (nombre_rol)
 );
 
 CREATE TABLE esquema_grupo4_alt.tiene_rol (
-    nombre_rol     VARCHAR(50) NOT NULL,
-    nombreUsuario  VARCHAR(50) NOT NULL,
+    nombre_rol     VARCHAR(50) ,
+    nombreUsuario  VARCHAR(50) ,
     fecha          DATE NOT NULL,
 
-    CONSTRAINT pk_tiene_rol
-        PRIMARY KEY (nombre_rol, nombreUsuario),
+    PRIMARY KEY (nombre_rol, nombreUsuario),
 
     CONSTRAINT fk_tiene_rol_rol
         FOREIGN KEY (nombre_rol)
