@@ -1,9 +1,14 @@
+-- Dominio para los distintos tipos de dni validos
 CREATE DOMAIN tipo_dni_dominio AS VARCHAR(10)
     CHECK (VALUE IN ('DNI', 'LE', 'LC', 'CI', 'PASAPORTE'));
+
+-- Dominio para los montos sean coherentes y positivos
 CREATE DOMAIN monto_dominio AS NUMERIC(10,2)
     CHECK (VALUE >= 1 AND VALUE <= 99999999.99);
-CREATE DOMAIN fecha_dom AS DATE
-    CHECK (VALUE >= DATE '2010-01-01');
+
+-- Dominio para controlar fechas (inscripcion, clases, etc.) que no sean anteriores a la creacion del club
+CREATE DOMAIN fecha_posterior_fundacion AS DATE
+    CHECK (VALUE >= DATE '2015-05-07');
 
 CREATE TABLE persona (
     tipo_dni         tipo_dni_dominio,
@@ -48,7 +53,7 @@ CREATE TABLE socio (
     nro_dni                VARCHAR(15),
     es_federado            BOOLEAN DEFAULT FALSE,
     ddj_salud              BOOLEAN DEFAULT FALSE,
-    fecha_inscripcion      fecha_dom,
+    fecha_inscripcion      fecha_posterior_fundacion,
     ausencias_consecutivas INT DEFAULT 0,
     nombre_disciplina      VARCHAR(50),
     nombre_categoria       VARCHAR(50),
@@ -128,7 +133,7 @@ CREATE TABLE planilla_asistencia (
 CREATE TABLE clase (
     nombre_disciplina VARCHAR(50),
     nombre_categoria  VARCHAR(50),
-    fecha             DATE,
+    fecha             fecha_posterior_fundacion,
     hora_inicio       TIME,
     hora_fin          TIME,
     tipo_dni          tipo_dni_dominio NOT NULL,
@@ -202,7 +207,7 @@ CREATE TABLE seguro (
 
 CREATE TABLE cuota (
     id_cuota       SERIAL PRIMARY KEY,
-    fecha          DATE NOT NULL,
+    fecha          fecha_posterior_fundacion NOT NULL,
     monto          monto_dominio NOT NULL,
     estado_de_pago VARCHAR(20),
     periodo        VARCHAR(20),
@@ -215,7 +220,7 @@ CREATE TABLE cuota (
 
 CREATE TABLE pago (
     id_pago    SERIAL PRIMARY KEY,
-    fecha_pago DATE NOT NULL,
+    fecha_pago fecha_posterior_fundacion NOT NULL,
     monto      monto_dominio NOT NULL,
     id_cuota   INT NOT NULL,
     FOREIGN KEY (id_cuota)
@@ -232,8 +237,8 @@ CREATE TABLE tiene_cargo (
     tipo_dni           tipo_dni_dominio,
     nro_dni            VARCHAR(15),
     id_cargo           INT,
-    fecha_inicio_cargo DATE,
-    fecha_fin_cargo    DATE,
+    fecha_inicio_cargo fecha_posterior_fundacion,
+    fecha_fin_cargo    fecha_posterior_fundacion,
     PRIMARY KEY (tipo_dni, nro_dni, id_cargo, fecha_inicio_cargo, fecha_fin_cargo),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
@@ -262,7 +267,7 @@ CREATE TABLE rol (
 CREATE TABLE tiene_rol (
     nombre_rol     VARCHAR(30),
     nombre_usuario VARCHAR(50),
-    fecha          DATE NOT NULL,
+    fecha          fecha_posterior_fundacion NOT NULL,
     PRIMARY KEY (nombre_rol, nombre_usuario, fecha),
     FOREIGN KEY (nombre_rol)
         REFERENCES rol (nombre_rol)
