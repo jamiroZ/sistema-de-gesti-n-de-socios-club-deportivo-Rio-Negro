@@ -8,6 +8,8 @@
 --    mantener compatibilidad con las FKs tipadas como INT.
 --  * CHECK requiere MySQL >= 8.0.16 (o MariaDB >= 10.2) para
 --    ser efectivamente validado.
+--  * Se corrigió una coma colgante en socio (error de sintaxis
+--    que ya venía del original, no específico de MySQL).
 -- =========================================================
 
 CREATE TABLE persona (
@@ -55,14 +57,9 @@ CREATE TABLE socio (
     ddj_salud              BOOLEAN DEFAULT FALSE,
     fecha_inscripcion      DATE CHECK (fecha_inscripcion >= '2015-05-07'),
     ausencias_consecutivas INT DEFAULT 0,
-    nombre_disciplina      VARCHAR(50),
-    nombre_categoria       VARCHAR(50),
     PRIMARY KEY (tipo_dni, nro_dni),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES persona (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
-    FOREIGN KEY (nombre_categoria, nombre_disciplina)
-        REFERENCES categoria (nombre_categoria, nombre_disciplina)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
@@ -273,5 +270,20 @@ CREATE TABLE tiene_rol (
         ON UPDATE CASCADE ON DELETE RESTRICT,
     FOREIGN KEY (nombre_usuario)
         REFERENCES usuario (nombre_usuario)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+CREATE TABLE pertenece (
+    tipo_dni           VARCHAR(10) CHECK (tipo_dni IN ('DNI','LE','LC','CI','PASAPORTE')),
+    nro_dni            VARCHAR(15),
+    nombre_disciplina  VARCHAR(50),
+    nombre_categoria   VARCHAR(50),
+    fecha_inscripcion  DATE CHECK (fecha_inscripcion >= '2015-05-07'),
+    PRIMARY KEY (tipo_dni, nro_dni, nombre_disciplina, nombre_categoria),
+    FOREIGN KEY (tipo_dni, nro_dni)
+        REFERENCES socio (tipo_dni, nro_dni)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    FOREIGN KEY (nombre_categoria, nombre_disciplina)
+        REFERENCES categoria (nombre_categoria, nombre_disciplina)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );

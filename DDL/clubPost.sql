@@ -1,3 +1,6 @@
+-- SET search_path TO nombreEsquema, public; 
+
+
 -- Dominio para los distintos tipos de dni validos
 CREATE DOMAIN tipo_dni_dominio AS VARCHAR(10)
     CHECK (VALUE IN ('DNI', 'LE', 'LC', 'CI', 'PASAPORTE'));
@@ -55,15 +58,11 @@ CREATE TABLE socio (
     ddj_salud              BOOLEAN DEFAULT FALSE,
     fecha_inscripcion      fecha_posterior_fundacion,
     ausencias_consecutivas INT DEFAULT 0,
-    nombre_disciplina      VARCHAR(50),
-    nombre_categoria       VARCHAR(50),
     PRIMARY KEY (tipo_dni, nro_dni),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES persona (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
-    FOREIGN KEY (nombre_categoria, nombre_disciplina)
-        REFERENCES categoria (nombre_categoria, nombre_disciplina)
         ON UPDATE CASCADE ON DELETE RESTRICT
+
 );
 
 CREATE TABLE usuario (
@@ -276,3 +275,18 @@ CREATE TABLE tiene_rol (
         REFERENCES usuario (nombre_usuario)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
+
+CREATE TABLE pertenece (
+    tipo_dni           tipo_dni_dominio,
+    nro_dni            VARCHAR(15),
+    nombre_disciplina  VARCHAR(50),
+    nombre_categoria   VARCHAR(50),
+    fecha_inscripcion  fecha_posterior_fundacion,
+    PRIMARY KEY (tipo_dni, nro_dni, nombre_disciplina, nombre_categoria),
+    FOREIGN KEY (tipo_dni, nro_dni)
+        REFERENCES socio (tipo_dni, nro_dni)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    FOREIGN KEY (nombre_categoria, nombre_disciplina)
+        REFERENCES categoria (nombre_categoria, nombre_disciplina)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+)
