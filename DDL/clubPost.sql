@@ -1,5 +1,8 @@
--- SET search_path TO nombreEsquema, public; 
+-- Reemplazar nombreEsquema por esq_grupo4 y correr, despues por esq_grupo4_alt.
 
+DROP SCHEMA IF EXISTS nombreEsquema CASCADE;
+CREATE SCHEMA nombreEsquema;
+SET search_path TO nombreEsquema, public;
 
 -- Dominio para los distintos tipos de dni validos
 CREATE DOMAIN tipo_dni_dominio AS VARCHAR(10)
@@ -24,27 +27,10 @@ CREATE TABLE persona (
     PRIMARY KEY (tipo_dni, nro_dni)
 );
 
-CREATE TABLE disciplina (
-    nombre  VARCHAR(50) PRIMARY KEY,
-    enfoque VARCHAR(50)
-);
-
-CREATE TABLE categoria (
-    nombre_categoria  VARCHAR(50),
-    nombre_disciplina VARCHAR(50),
-    edad_min          INT,
-    edad_max          INT,
-    PRIMARY KEY (nombre_categoria, nombre_disciplina),
-    FOREIGN KEY (nombre_disciplina)
-        REFERENCES disciplina (nombre)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    CHECK (edad_min <= edad_max)
-);
-
 CREATE TABLE profesor (
     tipo_dni      tipo_dni_dominio,
     nro_dni       VARCHAR(15),
-    fecha_ingreso DATE,
+    fecha_ingreso fecha_posterior_fundacion,
     PRIMARY KEY (tipo_dni, nro_dni),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES persona (tipo_dni, nro_dni)
@@ -56,13 +42,12 @@ CREATE TABLE socio (
     nro_dni                VARCHAR(15),
     es_federado            BOOLEAN DEFAULT FALSE,
     ddj_salud              BOOLEAN DEFAULT FALSE,
-    fecha_inscripcion      fecha_posterior_fundacion,
+    fecha_inscripcion_club fecha_posterior_fundacion,
     ausencias_consecutivas INT DEFAULT 0,
     PRIMARY KEY (tipo_dni, nro_dni),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES persona (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE RESTRICT
-
 );
 
 CREATE TABLE usuario (
@@ -71,23 +56,51 @@ CREATE TABLE usuario (
     tipo_dni       tipo_dni_dominio NOT NULL,
     nro_dni        VARCHAR(15) NOT NULL,
     PRIMARY KEY (nombre_usuario),
+    UNIQUE (tipo_dni, nro_dni),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES persona (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
+CREATE TABLE rol (
+    nombre_rol VARCHAR(30) PRIMARY KEY,
+    permisos   VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE tiene_rol (
+    nombre_rol     VARCHAR(30),
+    nombre_usuario VARCHAR(50),
+    fecha          fecha_posterior_fundacion,
+    PRIMARY KEY (nombre_rol, nombre_usuario, fecha),
+    FOREIGN KEY (nombre_rol)
+        REFERENCES rol (nombre_rol)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    FOREIGN KEY (nombre_usuario)
+        REFERENCES usuario (nombre_usuario)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+CREATE TABLE notificacion (
+    id_notificacion SERIAL PRIMARY KEY,
+    tipo            VARCHAR(30),
+    mensaje         TEXT,
+    fecha           TIMESTAMP,
+    nombre_usuario  VARCHAR(50) NOT NULL,
+    FOREIGN KEY (nombre_usuario)
+        REFERENCES usuario (nombre_usuario)
+        ON UPDATE CASCADE ON DELETE CASCADE
+);
+
 CREATE TABLE tiene_tutor (
     tipo_dni_socio tipo_dni_dominio,
     nro_dni_socio  VARCHAR(15),
+    parentesco     VARCHAR(30),
     tipo_dni_tutor tipo_dni_dominio NOT NULL,
     nro_dni_tutor  VARCHAR(15) NOT NULL,
-    parentesco     VARCHAR(30) NOT NULL,
-    PRIMARY KEY (tipo_dni_socio, nro_dni_socio),
-  
+    PRIMARY KEY (tipo_dni_socio, nro_dni_socio, parentesco),
     FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
         REFERENCES socio (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE CASCADE,
-
     FOREIGN KEY (tipo_dni_tutor, nro_dni_tutor)
         REFERENCES persona (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE RESTRICT
@@ -105,13 +118,44 @@ CREATE TABLE estado_socio (
         ON UPDATE CASCADE ON DELETE CASCADE
 );
 
+CREATE TABLE disciplina (
+    nombre_disciplina VARCHAR(50) PRIMARY KEY
+);
+
+CREATE TABLE categoria (
+    nombre_categoria  VARCHAR(50),
+    nombre_disciplina VARCHAR(50),
+    edad_min          INT,
+    edad_max          INT,
+    enfoque           VARCHAR(50),
+    PRIMARY KEY (nombre_categoria, nombre_disciplina),
+    FOREIGN KEY (nombre_disciplina)
+        REFERENCES disciplina (nombre_disciplina)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CHECK (edad_min <= edad_max)
+);
+
+CREATE TABLE pertenece (
+    tipo_dni          tipo_dni_dominio,
+    nro_dni           VARCHAR(15),
+    nombre_disciplina VARCHAR(50),
+    fecha_inscripcion fecha_posterior_fundacion,
+    PRIMARY KEY (tipo_dni, nro_dni, nombre_disciplina),
+    FOREIGN KEY (tipo_dni, nro_dni)
+        REFERENCES socio (tipo_dni, nro_dni)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    FOREIGN KEY (nombre_disciplina)
+        REFERENCES disciplina (nombre_disciplina)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
 CREATE TABLE a_cargo (
     nombre_disciplina VARCHAR(50),
     nombre_categoria  VARCHAR(50),
-    rol               VARCHAR(30),
-    tipo_dni          tipo_dni_dominio,
-    nro_dni           VARCHAR(15),
-    PRIMARY KEY (nombre_disciplina, nombre_categoria, tipo_dni, nro_dni, rol),
+    rol_profesor      VARCHAR(30),
+    tipo_dni          tipo_dni_dominio NOT NULL,
+    nro_dni           VARCHAR(15) NOT NULL,
+    PRIMARY KEY (nombre_disciplina, nombre_categoria, rol_profesor),
     FOREIGN KEY (nombre_categoria, nombre_disciplina)
         REFERENCES categoria (nombre_categoria, nombre_disciplina)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -135,30 +179,23 @@ CREATE TABLE clase (
     fecha             fecha_posterior_fundacion,
     hora_inicio       TIME,
     hora_fin          TIME,
-    tipo_dni          tipo_dni_dominio NOT NULL,
-    nro_dni           VARCHAR(15) NOT NULL,
     id_planilla       INT NOT NULL,
-    rol               VARCHAR(30),
-    PRIMARY KEY (
-        nombre_disciplina, nombre_categoria, fecha, hora_inicio, hora_fin
-    ),
+    PRIMARY KEY (nombre_disciplina, nombre_categoria, fecha, hora_inicio, hora_fin),
+    UNIQUE (id_planilla),
     FOREIGN KEY (nombre_categoria, nombre_disciplina)
         REFERENCES categoria (nombre_categoria, nombre_disciplina)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
-    FOREIGN KEY (tipo_dni, nro_dni)
-        REFERENCES profesor (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE RESTRICT,
     FOREIGN KEY (id_planilla)
         REFERENCES planilla_asistencia (id_planilla)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    UNIQUE (id_planilla)
+    CHECK (hora_inicio < hora_fin)
 );
 
 CREATE TABLE detalle_asistencia (
-    id_planilla        INT,
-    tipo_dni_socio      tipo_dni_dominio,
-    nro_dni_socio       VARCHAR(15),
-    estado_asistencia   VARCHAR(20),
+    id_planilla       INT,
+    tipo_dni_socio    tipo_dni_dominio,
+    nro_dni_socio     VARCHAR(15),
+    estado_asistencia VARCHAR(20),
     PRIMARY KEY (id_planilla, tipo_dni_socio, nro_dni_socio),
     FOREIGN KEY (id_planilla)
         REFERENCES planilla_asistencia (id_planilla)
@@ -178,8 +215,9 @@ CREATE TABLE medico (
 CREATE TABLE certificado_medico (
     tipo_dni          tipo_dni_dominio,
     nro_dni           VARCHAR(15),
-    fecha_emision     DATE,
-    fecha_vencimiento DATE NOT NULL,
+    fecha_emision     fecha_posterior_fundacion,
+    fecha_vencimiento fecha_posterior_fundacion NOT NULL,
+    es_apto           BOOLEAN NOT NULL,
     matricula         VARCHAR(20) NOT NULL,
     PRIMARY KEY (tipo_dni, nro_dni, fecha_emision),
     FOREIGN KEY (tipo_dni, nro_dni)
@@ -192,16 +230,18 @@ CREATE TABLE certificado_medico (
 );
 
 CREATE TABLE seguro (
-    num_poliza        VARCHAR(30) PRIMARY KEY,
-    tipo_dni_socio     tipo_dni_dominio NOT NULL,
-    nro_dni_socio      VARCHAR(15) NOT NULL,
-    fecha_alta         DATE,
-    fecha_vencimiento  DATE,
-    fecha_baja         DATE,
-    tipo               VARCHAR(30),
+    nro_poliza        VARCHAR(30) PRIMARY KEY,
+    tipo_dni_socio    tipo_dni_dominio NOT NULL,
+    nro_dni_socio     VARCHAR(15) NOT NULL,
+    fecha_alta        fecha_posterior_fundacion NOT NULL,
+    fecha_vencimiento fecha_posterior_fundacion,
+    fecha_baja        fecha_posterior_fundacion,
+    tipo              VARCHAR(30),
     FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
         REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE CASCADE
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CHECK (fecha_vencimiento IS NULL OR fecha_vencimiento >= fecha_alta),
+    CHECK (fecha_baja IS NULL OR fecha_baja >= fecha_alta)
 );
 
 CREATE TABLE cuota (
@@ -222,6 +262,7 @@ CREATE TABLE pago (
     fecha_pago fecha_posterior_fundacion NOT NULL,
     monto      monto_dominio NOT NULL,
     id_cuota   INT NOT NULL,
+    UNIQUE (id_cuota),
     FOREIGN KEY (id_cuota)
         REFERENCES cuota (id_cuota)
         ON UPDATE CASCADE ON DELETE RESTRICT
@@ -236,57 +277,14 @@ CREATE TABLE tiene_cargo (
     tipo_dni           tipo_dni_dominio,
     nro_dni            VARCHAR(15),
     id_cargo           INT,
-    fecha_inicio_cargo fecha_posterior_fundacion,
+    fecha_inicio_cargo fecha_posterior_fundacion NOT NULL,
     fecha_fin_cargo    fecha_posterior_fundacion,
-    PRIMARY KEY (tipo_dni, nro_dni, id_cargo, fecha_inicio_cargo, fecha_fin_cargo),
+    PRIMARY KEY (tipo_dni, nro_dni, id_cargo),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY (id_cargo)
         REFERENCES cargo_administrativo (id_cargo)
-        ON UPDATE CASCADE ON DELETE RESTRICT
-);
-
-CREATE TABLE notificacion (
-    id_notificacion SERIAL PRIMARY KEY,
-    tipo            VARCHAR(30),
-    mensaje         TEXT,
-    fecha           TIMESTAMP,
-    nombre_usuario  VARCHAR(50) NOT NULL,
-    FOREIGN KEY (nombre_usuario)
-        REFERENCES usuario (nombre_usuario)
-        ON UPDATE CASCADE ON DELETE CASCADE
-);
-
-CREATE TABLE rol (
-    nombre_rol VARCHAR(30) PRIMARY KEY,
-    permisos   VARCHAR(100) NOT NULL
-);
-
-CREATE TABLE tiene_rol (
-    nombre_rol     VARCHAR(30),
-    nombre_usuario VARCHAR(50),
-    fecha          fecha_posterior_fundacion NOT NULL,
-    PRIMARY KEY (nombre_rol, nombre_usuario, fecha),
-    FOREIGN KEY (nombre_rol)
-        REFERENCES rol (nombre_rol)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    FOREIGN KEY (nombre_usuario)
-        REFERENCES usuario (nombre_usuario)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+    CHECK (fecha_fin_cargo IS NULL OR fecha_fin_cargo >= fecha_inicio_cargo)
 );
-
-CREATE TABLE pertenece (
-    tipo_dni           tipo_dni_dominio,
-    nro_dni            VARCHAR(15),
-    nombre_disciplina  VARCHAR(50),
-    nombre_categoria   VARCHAR(50),
-    fecha_inscripcion  fecha_posterior_fundacion,
-    PRIMARY KEY (tipo_dni, nro_dni, nombre_disciplina, nombre_categoria),
-    FOREIGN KEY (tipo_dni, nro_dni)
-        REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
-    FOREIGN KEY (nombre_categoria, nombre_disciplina)
-        REFERENCES categoria (nombre_categoria, nombre_disciplina)
-        ON UPDATE CASCADE ON DELETE RESTRICT
-)
