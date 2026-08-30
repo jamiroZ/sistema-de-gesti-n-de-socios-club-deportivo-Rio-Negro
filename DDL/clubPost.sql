@@ -1,7 +1,4 @@
 -- Reemplazar nombreEsquema por esq_grupo4 y correr, despues por esq_grupo4_alt.
-
-DROP SCHEMA IF EXISTS nombreEsquema CASCADE;
-CREATE SCHEMA nombreEsquema;
 SET search_path TO nombreEsquema, public;
 
 -- Dominio para los distintos tipos de dni validos
