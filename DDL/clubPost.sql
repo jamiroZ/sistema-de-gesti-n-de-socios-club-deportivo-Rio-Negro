@@ -143,7 +143,7 @@ CREATE TABLE pertenece (
     PRIMARY KEY (tipo_dni, nro_dni, nombre_disciplina),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
+        ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY (nombre_disciplina)
         REFERENCES disciplina (nombre_disciplina)
         ON UPDATE CASCADE ON DELETE RESTRICT
@@ -202,7 +202,7 @@ CREATE TABLE detalle_asistencia (
         ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
         REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE medico (

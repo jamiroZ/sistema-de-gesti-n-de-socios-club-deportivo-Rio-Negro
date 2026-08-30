@@ -1,10 +1,8 @@
--- Reemplazar nombreEsquema por el nombre de la base y correr.
--- Desde phpMyAdmin hay que pararse en la base ya creada y saltear las tres
--- lineas de abajo, porque la interfaz ignora el USE.
+-- Correr primero las dos lineas de abajo, despues pararse en la base
+-- esq_grupo4 y recien ahi correr el resto, porque phpMyAdmin
 
-DROP DATABASE IF EXISTS nombreEsquema;
-CREATE DATABASE nombreEsquema;
-USE nombreEsquema;
+DROP DATABASE IF EXISTS esq_grupo4;
+CREATE DATABASE esq_grupo4;
 
 CREATE TABLE persona (
     tipo_dni         ENUM('DNI','LE','LC','CI','PASAPORTE'),
@@ -133,7 +131,7 @@ CREATE TABLE pertenece (
     PRIMARY KEY (tipo_dni, nro_dni, nombre_disciplina),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
+        ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY (nombre_disciplina)
         REFERENCES disciplina (nombre_disciplina)
         ON UPDATE CASCADE ON DELETE RESTRICT
@@ -192,7 +190,7 @@ CREATE TABLE detalle_asistencia (
         ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
         REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE medico (
