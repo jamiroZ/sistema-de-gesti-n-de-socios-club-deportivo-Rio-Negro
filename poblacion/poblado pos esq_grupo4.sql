@@ -128,14 +128,22 @@ INSERT INTO planilla_asistencia (id_planilla, tipo_dni, nro_dni) VALUES
     (5, 'LE',  '30000004'),
     (6, 'DNI', '30000002');
 
+-- Las 4 canchas del club. id_cancha es IDENTITY, no se inserta explicito
+INSERT INTO cancha (s_nombre) VALUES
+    ('Cancha Principal Voley'),
+    ('Cancha Auxiliar Voley'),
+    ('Cancha Principal Handball'),
+    ('Cancha Auxiliar Handball');
+
 -- Una clase por combinacion disciplina/categoria, cada una con su planilla unica
-INSERT INTO clase (nombre_disciplina, nombre_categoria, fecha, hora_inicio, hora_fin, id_planilla) VALUES
-    ('Voley',    'Infantiles', '2026-03-10', '16:00', '18:00', 1),
-    ('Voley',    'Juveniles',  '2026-03-11', '16:00', '18:00', 2),
-    ('Voley',    'Adultos',    '2026-03-12', '18:00', '20:00', 3),
-    ('Handball', 'Infantiles', '2026-03-10', '16:00', '18:00', 4),
-    ('Handball', 'Juveniles',  '2026-03-11', '16:00', '18:00', 5),
-    ('Handball', 'Adultos',    '2026-03-12', '18:00', '20:00', 6);
+-- y su cancha asignada segun disciplina (id_cancha 1-2 Voley, 3-4 Handball)
+INSERT INTO clase (nombre_disciplina, nombre_categoria, fecha, hora_inicio, hora_fin, id_planilla, id_cancha) VALUES
+    ('Voley',    'Infantiles', '2026-03-10', '16:00', '18:00', 1, 1),
+    ('Voley',    'Juveniles',  '2026-03-11', '16:00', '18:00', 2, 2),
+    ('Voley',    'Adultos',    '2026-03-12', '18:00', '20:00', 3, 1),
+    ('Handball', 'Infantiles', '2026-03-10', '16:00', '18:00', 4, 3),
+    ('Handball', 'Juveniles',  '2026-03-11', '16:00', '18:00', 5, 4),
+    ('Handball', 'Adultos',    '2026-03-12', '18:00', '20:00', 6, 3);
 
 -- Asistencia solo de socios que pertenecen a la disciplina de cada clase
 INSERT INTO detalle_asistencia (id_planilla, tipo_dni_socio, nro_dni_socio, estado_asistencia) VALUES
