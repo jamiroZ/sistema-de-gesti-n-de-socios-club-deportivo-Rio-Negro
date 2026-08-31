@@ -199,9 +199,9 @@ INSERT INTO cargo_administrativo (id_cargo, descripcion) VALUES
 
 -- Dos cargos vigentes (fecha_fin_cargo NULL) y uno ya cerrado
 INSERT INTO tiene_cargo (tipo_dni, nro_dni, id_cargo, fecha_inicio_cargo, fecha_fin_cargo) VALUES
-    ('CI',        '30000007', 1, '2025-01-15', NULL),
+    ('CI',        '30000007', 1, '2025-01-15', '2026-12-31'),
     ('PASAPORTE', '30000008', 2, '2024-06-01', '2025-12-31'),
-    ('DNI',       '30000002', 3, '2025-03-01', NULL);
+    ('DNI',       '30000002', 3, '2025-03-01', '2025-12-05');
 
 -- Resincronizar las 5 secuencias SERIAL que se cargaron con valor explicito
 SELECT setval(pg_get_serial_sequence('cuota', 'id_cuota'), (SELECT MAX(id_cuota) FROM cuota));

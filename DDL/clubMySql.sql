@@ -267,7 +267,7 @@ CREATE TABLE tiene_cargo (
     id_cargo           INT,
     fecha_inicio_cargo DATE NOT NULL CHECK (fecha_inicio_cargo >= '2015-05-07'),
     fecha_fin_cargo DATE CHECK (fecha_fin_cargo >= '2015-05-07'),
-    PRIMARY KEY (tipo_dni, nro_dni, id_cargo),
+    PRIMARY KEY (tipo_dni, nro_dni, id_cargo, fecha_inicio_cargo, fecha_fin_cargo),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE CASCADE,

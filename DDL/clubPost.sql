@@ -276,7 +276,7 @@ CREATE TABLE tiene_cargo (
     id_cargo           INT,
     fecha_inicio_cargo fecha_posterior_fundacion NOT NULL,
     fecha_fin_cargo    fecha_posterior_fundacion,
-    PRIMARY KEY (tipo_dni, nro_dni, id_cargo),
+    PRIMARY KEY (tipo_dni, nro_dni, id_cargo, fecha_inicio_cargo, fecha_fin_cargo),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -285,3 +285,20 @@ CREATE TABLE tiene_cargo (
         ON UPDATE CASCADE ON DELETE RESTRICT,
     CHECK (fecha_fin_cargo IS NULL OR fecha_fin_cargo >= fecha_inicio_cargo)
 );
+
+CREATE TABLE IF NOT EXISTS cancha (
+    id_cancha  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    s_nombre   VARCHAR(100) NOT NULL
+);
+
+ALTER TABLE clase
+ADD COLUMN IF NOT EXISTS id_cancha BIGINT;
+
+ALTER TABLE clase
+ADD CONSTRAINT fk_clase_cancha
+    FOREIGN KEY (id_cancha)
+    REFERENCES cancha (id_cancha)
+    ON UPDATE CASCADE ON DELETE SET NULL;
+
+ALTER TABLE usuario
+ADD COLUMN IF NOT EXISTS fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
