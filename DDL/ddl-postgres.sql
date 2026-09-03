@@ -1,5 +1,8 @@
 -- =============================================================================
 -- Club Deportivo Rio Negro - DDL PostgreSQL - Grupo 4
+-- USO
+--   Reemplazar nombreEsquema por esq_grupo4 y correr, despues por
+--   esq_grupo4_alt y volver a correr.
 -- =============================================================================
 
 SET search_path TO nombreEsquema, public;
