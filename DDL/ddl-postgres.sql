@@ -1,24 +1,60 @@
--- Correr primero las dos lineas de abajo, despues pararse en la base
--- esq_grupo4 y recien ahi correr el resto, porque phpMyAdmin
+-- =============================================================================
+-- Club Deportivo Rio Negro - DDL PostgreSQL - Grupo 4
+-- =============================================================================
 
-DROP DATABASE IF EXISTS esq_grupo4;
-CREATE DATABASE esq_grupo4;
+SET search_path TO nombreEsquema, public;
+
+-- -----------------------------------------------------------------------------
+-- Dominios
+-- -----------------------------------------------------------------------------
+
+-- Valores discretos. Tipos de documento admitidos por el club.
+CREATE DOMAIN tipo_dni_dominio AS VARCHAR(10)
+    CHECK (VALUE IN ('DNI', 'LE', 'LC', 'CI', 'PASAPORTE'));
+
+-- Rango numerico. Regla de negocio 14: ningun monto puede ser negativo.
+CREATE DOMAIN monto_dominio AS NUMERIC(10,2)
+    CHECK (VALUE >= 0 AND VALUE <= 99999999.99);
+
+-- Restriccion sobre fecha. Nada del club es anterior a su fundacion.
+CREATE DOMAIN fecha_posterior_fundacion AS DATE
+    CHECK (VALUE >= DATE '2015-05-07');
+
+-- Listas cerradas que el dominio define sin ambiguedad.
+CREATE DOMAIN enfoque_dominio AS VARCHAR(20)
+    CHECK (VALUE IN ('Recreativo', 'Competitivo'));
+
+CREATE DOMAIN estado_asistencia_dominio AS VARCHAR(25)
+    CHECK (VALUE IN ('Presente', 'Ausente', 'Ausente justificado'));
+
+CREATE DOMAIN estado_pago_dominio AS VARCHAR(20)
+    CHECK (VALUE IN ('Saldada', 'No saldada'));
+
+CREATE DOMAIN estado_socio_dominio AS VARCHAR(20)
+    CHECK (VALUE IN ('Socio potencial', 'Pendiente de alta', 'Activo', 'Becado', 'No activo'));
+
+CREATE DOMAIN rol_profesor_dominio AS VARCHAR(30)
+    CHECK (VALUE IN ('Director Tecnico', 'Preparador Fisico'));
+
+-- -----------------------------------------------------------------------------
+-- Personas y especializacion
+-- -----------------------------------------------------------------------------
 
 CREATE TABLE persona (
-    tipo_dni         ENUM('DNI','LE','LC','CI','PASAPORTE'),
+    tipo_dni         tipo_dni_dominio,
     nro_dni          VARCHAR(15),
     nombre           VARCHAR(60) NOT NULL,
     apellido         VARCHAR(60) NOT NULL,
     telefono         VARCHAR(20),
     fecha_nacimiento DATE NOT NULL,
-    mail             VARCHAR(100),
+    mail             VARCHAR(100) NOT NULL,
     PRIMARY KEY (tipo_dni, nro_dni)
 );
 
 CREATE TABLE profesor (
-    tipo_dni      ENUM('DNI','LE','LC','CI','PASAPORTE'),
+    tipo_dni      tipo_dni_dominio,
     nro_dni       VARCHAR(15),
-    fecha_ingreso DATE CHECK (fecha_ingreso >= '2015-05-07'),
+    fecha_ingreso fecha_posterior_fundacion NOT NULL,
     PRIMARY KEY (tipo_dni, nro_dni),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES persona (tipo_dni, nro_dni)
@@ -26,22 +62,23 @@ CREATE TABLE profesor (
 );
 
 CREATE TABLE socio (
-    tipo_dni               ENUM('DNI','LE','LC','CI','PASAPORTE'),
+    tipo_dni               tipo_dni_dominio,
     nro_dni                VARCHAR(15),
-    es_federado            BOOLEAN DEFAULT FALSE,
-    ddj_salud              BOOLEAN DEFAULT FALSE,
-    fecha_inscripcion_club DATE CHECK (fecha_inscripcion_club >= '2015-05-07'),
-    ausencias_consecutivas INT DEFAULT 0,
+    es_federado            BOOLEAN NOT NULL DEFAULT FALSE,
+    ddj_salud              BOOLEAN NOT NULL DEFAULT FALSE,
+    fecha_inscripcion_club fecha_posterior_fundacion NOT NULL,
+    ausencias_consecutivas SMALLINT NOT NULL DEFAULT 0,
     PRIMARY KEY (tipo_dni, nro_dni),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES persona (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CHECK (ausencias_consecutivas >= 0)
 );
 
 CREATE TABLE usuario (
     nombre_usuario VARCHAR(50),
     contrasenia    VARCHAR(255) NOT NULL,
-    tipo_dni       ENUM('DNI','LE','LC','CI','PASAPORTE') NOT NULL,
+    tipo_dni       tipo_dni_dominio NOT NULL,
     nro_dni        VARCHAR(15) NOT NULL,
     PRIMARY KEY (nombre_usuario),
     UNIQUE (tipo_dni, nro_dni),
@@ -56,23 +93,25 @@ CREATE TABLE rol (
 );
 
 CREATE TABLE tiene_rol (
-    nombre_rol     VARCHAR(30),
-    nombre_usuario VARCHAR(50),
-    fecha DATE CHECK (fecha >= '2015-05-07'),
-    PRIMARY KEY (nombre_rol, nombre_usuario, fecha),
+    nombre_rol       VARCHAR(30),
+    nombre_usuario   VARCHAR(50),
+    fecha_inicio_rol fecha_posterior_fundacion,
+    fecha_fin_rol    fecha_posterior_fundacion,
+    PRIMARY KEY (nombre_rol, nombre_usuario, fecha_inicio_rol, fecha_fin_rol),
     FOREIGN KEY (nombre_rol)
         REFERENCES rol (nombre_rol)
         ON UPDATE CASCADE ON DELETE RESTRICT,
     FOREIGN KEY (nombre_usuario)
         REFERENCES usuario (nombre_usuario)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CHECK (fecha_fin_rol >= fecha_inicio_rol)
 );
 
 CREATE TABLE notificacion (
-    id_notificacion INT AUTO_INCREMENT PRIMARY KEY,
-    tipo            VARCHAR(30),
-    mensaje         TEXT,
-    fecha DATE CHECK (fecha >= '2015-05-07'),
+    id_notificacion INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    tipo            VARCHAR(30) NOT NULL,
+    mensaje         TEXT NOT NULL,
+    fecha           TIMESTAMP NOT NULL,
     nombre_usuario  VARCHAR(50) NOT NULL,
     FOREIGN KEY (nombre_usuario)
         REFERENCES usuario (nombre_usuario)
@@ -80,10 +119,10 @@ CREATE TABLE notificacion (
 );
 
 CREATE TABLE tiene_tutor (
-    tipo_dni_socio ENUM('DNI','LE','LC','CI','PASAPORTE'),
+    tipo_dni_socio tipo_dni_dominio,
     nro_dni_socio  VARCHAR(15),
     parentesco     VARCHAR(30),
-    tipo_dni_tutor ENUM('DNI','LE','LC','CI','PASAPORTE') NOT NULL,
+    tipo_dni_tutor tipo_dni_dominio NOT NULL,
     nro_dni_tutor  VARCHAR(15) NOT NULL,
     PRIMARY KEY (tipo_dni_socio, nro_dni_socio, parentesco),
     FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
@@ -95,16 +134,23 @@ CREATE TABLE tiene_tutor (
 );
 
 CREATE TABLE estado_socio (
-    tipo_dni           ENUM('DNI','LE','LC','CI','PASAPORTE'),
+    tipo_dni           tipo_dni_dominio,
     nro_dni            VARCHAR(15),
-    fecha_modificacion DATETIME,
-    estado             VARCHAR(20) NOT NULL,
-    modificado_por     VARCHAR(50),
+    fecha_modificacion TIMESTAMP,
+    estado             estado_socio_dominio NOT NULL,
+    modificado_por     VARCHAR(50) NOT NULL,
     PRIMARY KEY (tipo_dni, nro_dni, fecha_modificacion),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE CASCADE
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (modificado_por)
+        REFERENCES usuario (nombre_usuario)
+        ON UPDATE CASCADE ON DELETE RESTRICT
 );
+
+-- -----------------------------------------------------------------------------
+-- Actividades
+-- -----------------------------------------------------------------------------
 
 CREATE TABLE disciplina (
     nombre_disciplina VARCHAR(50) PRIMARY KEY
@@ -113,21 +159,22 @@ CREATE TABLE disciplina (
 CREATE TABLE categoria (
     nombre_categoria  VARCHAR(50),
     nombre_disciplina VARCHAR(50),
-    edad_min          INT,
-    edad_max          INT,
-    enfoque           VARCHAR(50),
+    edad_min          SMALLINT NOT NULL,
+    edad_max          SMALLINT NOT NULL,
+    enfoque           enfoque_dominio NOT NULL,
     PRIMARY KEY (nombre_categoria, nombre_disciplina),
     FOREIGN KEY (nombre_disciplina)
         REFERENCES disciplina (nombre_disciplina)
         ON UPDATE CASCADE ON DELETE CASCADE,
-    CHECK (edad_min <= edad_max)
+    CHECK (edad_min <= edad_max),
+    CHECK (edad_min >= 0)
 );
 
 CREATE TABLE pertenece (
-    tipo_dni          ENUM('DNI','LE','LC','CI','PASAPORTE'),
+    tipo_dni          tipo_dni_dominio,
     nro_dni           VARCHAR(15),
     nombre_disciplina VARCHAR(50),
-    fecha_inscripcion DATE CHECK (fecha_inscripcion >= '2015-05-07'),
+    fecha_inscripcion fecha_posterior_fundacion NOT NULL,
     PRIMARY KEY (tipo_dni, nro_dni, nombre_disciplina),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
@@ -140,8 +187,8 @@ CREATE TABLE pertenece (
 CREATE TABLE a_cargo (
     nombre_disciplina VARCHAR(50),
     nombre_categoria  VARCHAR(50),
-    rol_profesor      VARCHAR(30),
-    tipo_dni          ENUM('DNI','LE','LC','CI','PASAPORTE') NOT NULL,
+    rol_profesor      rol_profesor_dominio,
+    tipo_dni          tipo_dni_dominio NOT NULL,
     nro_dni           VARCHAR(15) NOT NULL,
     PRIMARY KEY (nombre_disciplina, nombre_categoria, rol_profesor),
     FOREIGN KEY (nombre_categoria, nombre_disciplina)
@@ -153,8 +200,8 @@ CREATE TABLE a_cargo (
 );
 
 CREATE TABLE planilla_asistencia (
-    id_planilla INT AUTO_INCREMENT PRIMARY KEY,
-    tipo_dni    ENUM('DNI','LE','LC','CI','PASAPORTE') NOT NULL,
+    id_planilla INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    tipo_dni    tipo_dni_dominio NOT NULL,
     nro_dni     VARCHAR(15) NOT NULL,
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES profesor (tipo_dni, nro_dni)
@@ -164,7 +211,7 @@ CREATE TABLE planilla_asistencia (
 CREATE TABLE clase (
     nombre_disciplina VARCHAR(50),
     nombre_categoria  VARCHAR(50),
-    fecha DATE CHECK (fecha >= '2015-05-07'),
+    fecha             fecha_posterior_fundacion,
     hora_inicio       TIME,
     hora_fin          TIME,
     id_planilla       INT NOT NULL,
@@ -181,9 +228,9 @@ CREATE TABLE clase (
 
 CREATE TABLE detalle_asistencia (
     id_planilla       INT,
-    tipo_dni_socio    ENUM('DNI','LE','LC','CI','PASAPORTE'),
+    tipo_dni_socio    tipo_dni_dominio,
     nro_dni_socio     VARCHAR(15),
-    estado_asistencia VARCHAR(20),
+    estado_asistencia estado_asistencia_dominio NOT NULL,
     PRIMARY KEY (id_planilla, tipo_dni_socio, nro_dni_socio),
     FOREIGN KEY (id_planilla)
         REFERENCES planilla_asistencia (id_planilla)
@@ -193,18 +240,22 @@ CREATE TABLE detalle_asistencia (
         ON UPDATE CASCADE ON DELETE CASCADE
 );
 
+-- -----------------------------------------------------------------------------
+-- Salud y seguro
+-- -----------------------------------------------------------------------------
+
 CREATE TABLE medico (
     matricula VARCHAR(20) PRIMARY KEY,
-    nombre    VARCHAR(60),
-    apellido  VARCHAR(60),
-    telefono  VARCHAR(20)
+    nombre    VARCHAR(60) NOT NULL,
+    apellido  VARCHAR(60) NOT NULL,
+    telefono  VARCHAR(20) NOT NULL
 );
 
 CREATE TABLE certificado_medico (
-    tipo_dni          ENUM('DNI','LE','LC','CI','PASAPORTE'),
+    tipo_dni          tipo_dni_dominio,
     nro_dni           VARCHAR(15),
-    fecha_emision DATE CHECK (fecha_emision >= '2015-05-07'),
-    fecha_vencimiento DATE NOT NULL CHECK (fecha_vencimiento >= '2015-05-07'),
+    fecha_emision     fecha_posterior_fundacion,
+    fecha_vencimiento fecha_posterior_fundacion NOT NULL,
     es_apto           BOOLEAN NOT NULL,
     matricula         VARCHAR(20) NOT NULL,
     PRIMARY KEY (tipo_dni, nro_dni, fecha_emision),
@@ -214,31 +265,35 @@ CREATE TABLE certificado_medico (
     FOREIGN KEY (matricula)
         REFERENCES medico (matricula)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    CHECK (fecha_emision < fecha_vencimiento)
+    CHECK (fecha_vencimiento >= fecha_emision)
 );
 
 CREATE TABLE seguro (
     nro_poliza        VARCHAR(30) PRIMARY KEY,
-    tipo_dni_socio    ENUM('DNI','LE','LC','CI','PASAPORTE') NOT NULL,
+    tipo_dni_socio    tipo_dni_dominio NOT NULL,
     nro_dni_socio     VARCHAR(15) NOT NULL,
-    fecha_alta DATE NOT NULL CHECK (fecha_alta >= '2015-05-07'),
-    fecha_vencimiento DATE CHECK (fecha_vencimiento >= '2015-05-07'),
-    fecha_baja DATE CHECK (fecha_baja >= '2015-05-07'),
-    tipo              VARCHAR(30),
+    fecha_alta        fecha_posterior_fundacion NOT NULL,
+    fecha_vencimiento fecha_posterior_fundacion NOT NULL,
+    fecha_baja        fecha_posterior_fundacion,
+    tipo              VARCHAR(30) NOT NULL,
     FOREIGN KEY (tipo_dni_socio, nro_dni_socio)
         REFERENCES socio (tipo_dni, nro_dni)
         ON UPDATE CASCADE ON DELETE CASCADE,
-    CHECK (fecha_vencimiento IS NULL OR fecha_vencimiento >= fecha_alta),
+    CHECK (fecha_vencimiento >= fecha_alta),
     CHECK (fecha_baja IS NULL OR fecha_baja >= fecha_alta)
 );
 
+-- -----------------------------------------------------------------------------
+-- Finanzas
+-- -----------------------------------------------------------------------------
+
 CREATE TABLE cuota (
-    id_cuota       INT AUTO_INCREMENT PRIMARY KEY,
-    fecha DATE NOT NULL CHECK (fecha >= '2015-05-07'),
-    monto DECIMAL(10,2) NOT NULL CHECK (monto >= 1 AND monto <= 99999999.99),
-    estado_de_pago VARCHAR(20),
-    periodo        VARCHAR(20),
-    tipo_dni       ENUM('DNI','LE','LC','CI','PASAPORTE') NOT NULL,
+    id_cuota       INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    fecha          fecha_posterior_fundacion NOT NULL,
+    monto          monto_dominio NOT NULL,
+    estado_de_pago estado_pago_dominio NOT NULL,
+    periodo        VARCHAR(20) NOT NULL,
+    tipo_dni       tipo_dni_dominio NOT NULL,
     nro_dni        VARCHAR(15) NOT NULL,
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
@@ -246,9 +301,9 @@ CREATE TABLE cuota (
 );
 
 CREATE TABLE pago (
-    id_pago    INT AUTO_INCREMENT PRIMARY KEY,
-    fecha_pago DATE NOT NULL CHECK (fecha_pago >= '2015-05-07'),
-    monto DECIMAL(10,2) NOT NULL CHECK (monto >= 1 AND monto <= 99999999.99),
+    id_pago    INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    fecha_pago fecha_posterior_fundacion NOT NULL,
+    monto      monto_dominio NOT NULL,
     id_cuota   INT NOT NULL,
     UNIQUE (id_cuota),
     FOREIGN KEY (id_cuota)
@@ -256,17 +311,21 @@ CREATE TABLE pago (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
+-- -----------------------------------------------------------------------------
+-- Cargos
+-- -----------------------------------------------------------------------------
+
 CREATE TABLE cargo_administrativo (
-    id_cargo    INT AUTO_INCREMENT PRIMARY KEY,
-    descripcion VARCHAR(100)
+    id_cargo    INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    descripcion VARCHAR(100) NOT NULL
 );
 
 CREATE TABLE tiene_cargo (
-    tipo_dni           ENUM('DNI','LE','LC','CI','PASAPORTE'),
+    tipo_dni           tipo_dni_dominio,
     nro_dni            VARCHAR(15),
     id_cargo           INT,
-    fecha_inicio_cargo DATE NOT NULL CHECK (fecha_inicio_cargo >= '2015-05-07'),
-    fecha_fin_cargo DATE CHECK (fecha_fin_cargo >= '2015-05-07'),
+    fecha_inicio_cargo fecha_posterior_fundacion NOT NULL,
+    fecha_fin_cargo    fecha_posterior_fundacion NOT NULL,
     PRIMARY KEY (tipo_dni, nro_dni, id_cargo, fecha_inicio_cargo, fecha_fin_cargo),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
@@ -274,5 +333,5 @@ CREATE TABLE tiene_cargo (
     FOREIGN KEY (id_cargo)
         REFERENCES cargo_administrativo (id_cargo)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    CHECK (fecha_fin_cargo IS NULL OR fecha_fin_cargo >= fecha_inicio_cargo)
+    CHECK (fecha_fin_cargo >= fecha_inicio_cargo)
 );
