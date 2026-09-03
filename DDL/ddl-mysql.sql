@@ -115,10 +115,7 @@ CREATE TABLE estado_socio (
     PRIMARY KEY (tipo_dni, nro_dni, fecha_modificacion),
     FOREIGN KEY (tipo_dni, nro_dni)
         REFERENCES socio (tipo_dni, nro_dni)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (modificado_por)
-        REFERENCES usuario (nombre_usuario)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- -----------------------------------------------------------------------------
