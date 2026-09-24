@@ -1,5 +1,3 @@
-CREATE TRIGGER trg_log_pago
-AFTER INSERT OR UPDATE OR DELETE
-ON pago
-FOR EACH STATEMENT
-EXECUTE FUNCTION funcion_log_pago();
+SELECT *
+FROM LOG_planillaControl
+ORDER BY numero_operacion;;
