@@ -335,3 +335,11 @@ CREATE TABLE tiene_cargo (
         ON UPDATE CASCADE ON DELETE RESTRICT,
     CHECK (fecha_fin_cargo >= fecha_inicio_cargo)
 );
+
+------------------------------------------------------------------
+--tabla LOG_planillaControl del ejercicio 3.4 del tp n°3
+------------------------------------------------------------------
+CREATE TABLE LOG_planillaControl ( 
+            numero_operacion SERIAL PRIMARY KEY, 
+            operacion VARCHAR(10) 
+); 
