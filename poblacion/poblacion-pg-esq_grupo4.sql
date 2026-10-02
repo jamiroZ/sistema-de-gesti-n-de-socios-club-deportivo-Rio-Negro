@@ -197,7 +197,9 @@ INSERT INTO seguro (nro_poliza, tipo_dni_socio, nro_dni_socio, fecha_alta, fecha
     ('POL-3003', 'CI',        '30000007', '2026-01-25', '2027-01-25', NULL,         'Accidentes Personales'),
     ('POL-3004', 'PASAPORTE', '30000008', '2025-06-10', '2026-06-10', '2026-06-15', 'Responsabilidad Civil'),
     ('POL-3005', 'DNI',       '30000006', '2026-04-15', '2027-04-15', NULL,         'Accidentes Personales');
-
+    ('POL-3006', 'DNI', '30000001', '2025-03-01', '2026-03-01', NULL, 'Responsabilidad Civil'),
+    ('POL-3007', 'DNI', '30000005', '2025-05-10', '2026-05-10', NULL, 'Accidentes Personales'),
+    ('POL-3008', 'CI',  '30000007', '2025-08-20', '2026-08-20', NULL, 'Accidentes Personales');
 -- -----------------------------------------------------------------------------
 -- Finanzas
 -- -----------------------------------------------------------------------------
